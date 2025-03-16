@@ -8,7 +8,13 @@ import ComplaintPage from './pages/student/Complaint';
 import CRDashboardPage from './pages/cr/CRDashboard';
 import CRTransactionsPage from './pages/cr/CRTransactions';
 import VerifyOnlineTransactionPage from './pages/cr/VerifyOnlineTransaction';
-import CashHandoversPage from './pages/cr/CashHandovers';
+import CRCashHandoversPage from './pages/cr/CRCashHandovers';
+import AddDonationPage from './pages/cr/AddDonation';
+import BPDashboardPage from './pages/bp/BPDashboard';
+import BPCashHandoversPage from './pages/bp/BPCashHandovers';
+import BPCashReceivalConfirmationPage from './pages/bp/BPCashReceivalConfirmation';
+import NSFTDashboardPage from './pages/nsft/NSFTDashboard';
+import NSFTCashReceivalConfirmationPage from './pages/nsft/NSFTCashReceivalConfirmation';
 
 function App() {
   return (
@@ -27,13 +33,24 @@ function App() {
         {/* CR/GR/NsfRep Routes */}
         <Route path="/cr" element={<CRDashboardPage />} />
         <Route path="/cr/dashboard" element={<CRDashboardPage />} />
+        <Route path="cr/add-donation" element={<AddDonationPage />} />
         <Route path="/cr/transactions" element={<CRTransactionsPage />} />
         <Route path="/cr/verify-online-transaction" element={<VerifyOnlineTransactionPage />} />
-        <Route path="/cr/cash-handovers" element={<CashHandoversPage />} />
+        <Route path="/cr/cash-handovers" element={<CRCashHandoversPage />} />
 
         
-        {/* <Route path="/cr/verify-online-transaction" element={<VerifyOnlineTransactionPage />} />
-        <Route path="/cr/cash-handovers" element={<CashHandoversPage />} />  */}
+        {/* BP Routes */}
+        <Route path="/bp" element={<BPDashboardPage />} />
+        <Route path="/bp/dashboard" element={<BPDashboardPage />} />
+        <Route path="/bp/cash-handovers" element={<BPCashHandoversPage />} />
+        <Route path="/bp/cash-receival-confirmation" element={<BPCashReceivalConfirmationPage />} />
+
+
+        {/* NSFT Routes */}
+        <Route path="/nsft" element={<NSFTDashboardPage />} />
+        <Route path="/nsft/dashboard" element={<NSFTDashboardPage />} />
+        <Route path="/nsft/cash-receival-confirmation" element={<NSFTCashReceivalConfirmationPage />} />
+
       </Routes>
     </Router>
   );

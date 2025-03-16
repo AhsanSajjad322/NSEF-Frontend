@@ -6,7 +6,7 @@ import { MobileSidebar } from './MobileSidebar';
 
 const Navbar = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const userRoles = ['Personal', 'CR', 'NSFRep'];
+    const userRoles = ['Personal', 'CR / NSFRep', 'BP', 'NSFT'];
     const currentRole = userRoles[0];
 
     const handleOpenSidebar = () => {

@@ -4,13 +4,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { X } from 'lucide-react';
+import { X, Copy } from 'lucide-react';
 
 const DonateOnlinePage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [donationReceipt, setDonationReceipt] = useState(null);
     const [donationAmount, setDonationAmount] = useState('');
     const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+    const [copySuccess, setCopySuccess] = useState('');
 
     const bankDetails = {
         bankName: 'Sadapay',
@@ -52,13 +53,25 @@ const DonateOnlinePage = () => {
         // Optionally, you can show a success message to the user
     };
 
+    const copyToClipboard = async () => {
+        try {
+            await navigator.clipboard.writeText(bankDetails.accountNumber);
+            setCopySuccess('Account number copied!');
+            setTimeout(() => setCopySuccess(''), 2000); // Clear message after 2 seconds
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+            setCopySuccess('Failed to copy');
+            setTimeout(() => setCopySuccess(''), 2000);
+        }
+    };
+
     return (
         <div className="bg-background-DEFAULT min-h-screen">
             <Navbar />
             <div className="container mx-auto p-4">
                 {/* Breadcrumb */}
                 <div className="text-sm text-text-light mb-4">
-                    Home / <span className="font-semibold text-text-DEFAULT">Donate Online</span>
+                    Personal / <span className="font-semibold text-text-DEFAULT">Donate Online</span>
                 </div>
 
                 {/* Bank Account Information */}
@@ -68,12 +81,18 @@ const DonateOnlinePage = () => {
                         <p className="text-white">
                             <strong>Bank Name:</strong> {bankDetails.bankName}
                         </p>
-                        <p className="text-white">
-                            <strong>Account Number:</strong> {bankDetails.accountNumber}
-                        </p>
+                        <div className="flex items-center space-x-2">
+                            <p className="text-white">
+                                <strong>Account Number:</strong> {bankDetails.accountNumber}
+                            </p>
+                            <Button variant="ghost" size="icon" onClick={copyToClipboard} className="text-white hover:bg-primary-600">
+                                <Copy className="h-4 w-4" />
+                            </Button>
+                        </div>
                         <p className="text-white">
                             <strong>Account Name:</strong> {bankDetails.holderName}
                         </p>
+                        {copySuccess && <p className="mt-2 text-green-300">{copySuccess}</p>}
                     </CardContent>
                 </Card>
 

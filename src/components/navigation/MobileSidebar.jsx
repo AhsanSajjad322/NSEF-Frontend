@@ -20,32 +20,28 @@ import {
 
 // Define your menu structure
 const menuItems = {
-    Personal: [
+    'Personal': [
         { label: 'Dashboard', path: '/student/dashboard' },
         { label: 'Donate Online', path: '/student/donate-online' },
         { label: 'Request Fund', path: '/student/request-fund' },
         { label: 'View Transaction', path: '/student/view-transactions' },
         { label: 'Complaint/Feedback', path: '/student/complaint' },
     ],
-    CR: [
+    'CR / NSFRep': [
         { label: 'Dashboard', path: '/cr/dashboard' },
-        { label: 'Transaction', path: '/cr/transactions' },
-        { label: 'Verify Online Transaction', path: '/cr/verify-online-transaction' },
+        { label: 'Add Donation', path: '/cr/add-donation' },
+        { label: 'Cash Transactions', path: '/cr/transactions' },
         { label: 'Cash Handovers', path: '/cr/cash-handovers' },
-        // Add more CR pages
+        { label: 'Verify Online Transaction', path: '/cr/verify-online-transaction' },
     ],
-    NSFRep: [
-        { label: 'Dashboard', path: '/nsfRep/dashboard' },
-        { label: 'Home', path: '/nsfRep/home' },
-        { label: 'Donate Online', path: '/nsfRep/donate-online' }, // Added for consistency
-        { label: 'Request Fund', path: '/nsfRep/request-fund' },   // Added for consistency
-        { label: 'View Transaction', path: '/nsfRep/view-transaction' }, // Added for consistency
+    'BP': [
+        { label: 'Dashboard', path: '/bp/dashboard' },
+        { label: 'Cash Handover', path: '/bp/cash-handovers' },
+        { label: 'Cash Receival Confirmation', path: '/bp/cash-receival-confirmation' },
     ],
-    BR: [
-        // Add BR pages
-    ],
-    NSF: [
-        // Add NSF pages
+    'NSFT': [
+        { label: 'Dashboard', path: '/nsft/dashboard' },
+        { label: 'Cash Receival Confirmation', path: '/nsft/cash-receival-confirmation' },
     ],
 };
 export const MobileSidebar = ({ isOpen, onClose, userRoles }) => {
