@@ -1,0 +1,55 @@
+[
+        {
+            "id": 1,
+            "studentName": "Ahmed Khan",
+            "studentId": "STU-2023-001",
+            "amount": 15000,
+            "reason": "Tuition fee payment for the current semester",
+            "requestDate": "2025-05-28",
+            "bankName": "HBL",
+            "accountNumber": "1234-5678-9012",
+            "accountHolderName": "Ahmed Khan",
+            "contactNumber": "0300-1234567",
+            "status": "pending",
+            "approvedByNSFT": false
+        },
+        {
+            "id": 2,
+            "studentName": "Sara Ali",
+            "studentId": "STU-2023-015",
+            "amount": 8000,
+            "reason": "Course materials and books purchase",
+            "requestDate": "2025-05-29",
+            "bankName": "MCB",
+            "accountNumber": "9876-5432-1098",
+            "accountHolderName": "Sara Ali",
+            "contactNumber": "0300-7654321",
+            "status": "pending",
+            "approvedByNSFT": true
+        },
+        {
+            "id": 3,
+            "studentName": "Bilal Ahmed",
+            "studentId": "STU-2023-042",
+            "amount": 20000,
+            "reason": "Emergency medical expenses",
+            "requestDate": "2025-05-30",
+            "bankName": "UBL",
+            "accountNumber": "5678-1234-5678",
+            "accountHolderName": "Bilal Ahmed",
+            "contactNumber": "0333-1234567",
+            "status": "pending",
+            "approvedByNSFT": false
+        },
+        {
+            "id": 4,
+            "studentName": "Sara Khan",
+            "cms": "368860",
+            "studentId": "STU-2023-060",
+            "amount": 30000,
+            "requestDate": "2025-05-27",
+            "reason": "Semester fee support",
+            "status": "pending",
+            "approvedByNSFT": true
+        }
+    ]

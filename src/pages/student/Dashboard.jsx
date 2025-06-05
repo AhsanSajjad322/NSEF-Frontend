@@ -51,8 +51,7 @@ const HomePage = () => {
                 </div>
 
                 {/* Actions Section */}
-                <h2 className="text-md font-semibold text-text-DEFAULT mb-2">Actions</h2>
-                <div className="grid grid-cols-2 gap-4 mt-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <h2 className="text-md font-semibold text-text-DEFAULT mb-2">Actions</h2>                <div className="grid grid-cols-2 gap-4 mt-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                     <Link to="/student/donate-online">
                         <ActionCard bgColor="bg-secondary-500" title="Donate Online" icon={<Coins className="h-6 w-6 text-primary-200" />} />
                     </Link>
@@ -64,6 +63,9 @@ const HomePage = () => {
                     </Link>
                     <Link to="/student/view-transactions">
                         <ActionCard bgColor="bg-secondary-500" title="View Transaction" icon={<FileText className="h-6 w-6 text-accent-200" />} />
+                    </Link>
+                    <Link to="/student/request-history">
+                        <ActionCard bgColor="bg-secondary-500" title="Fund Request History" icon={<FileText className="h-6 w-6 text-primary-200" />} />
                     </Link>
                 </div>
             </div>

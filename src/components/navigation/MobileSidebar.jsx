@@ -1,11 +1,8 @@
-import React from 'react';
-import { X } from 'lucide-react';
 import {
     Sheet,
     SheetContent,
     SheetHeader,
     SheetTitle,
-    SheetClose,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -23,9 +20,10 @@ const menuItems = {
     'Personal': [
         { label: 'Dashboard', path: '/student/dashboard' },
         { label: 'Donate Online', path: '/student/donate-online' },
-        { label: 'Request Fund', path: '/student/request-fund' },
+        // { label: 'Request Fund', path: '/student/request-fund' },
         { label: 'View Transaction', path: '/student/view-transactions' },
         { label: 'Complaint/Feedback', path: '/student/complaint' },
+        { label : 'Fund Request History', path: '/student/request-history' }
     ],
     'CR / NSFRep': [
         { label: 'Dashboard', path: '/cr/dashboard' },
@@ -42,6 +40,10 @@ const menuItems = {
     'NSFT': [
         { label: 'Dashboard', path: '/nsft/dashboard' },
         { label: 'Cash Receival Confirmation', path: '/nsft/cash-receival-confirmation' },
+    ],
+
+    'Accountant': [
+        { label: 'Dashboard', path: '/accountant' },
     ],
 };
 export const MobileSidebar = ({ isOpen, onClose, userRoles }) => {
