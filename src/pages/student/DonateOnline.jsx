@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/navigation/Navbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,15 +12,59 @@ const DonateOnlinePage = () => {
     const [donationAmount, setDonationAmount] = useState('');
     const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
     const [copySuccess, setCopySuccess] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [bankDetails, setBankDetials] = useState({
+        bankName: '',
+        accountNumber: '',
+        holderName: ''
+    })
 
-    const bankDetails = {
-        bankName: 'Sadapay',
-        accountNumber: '0335-8477227',
-        holderName: "Muhammad Ahsan Sajjad"
-    };
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
+    const getToken = ()=>{
+        return localStorage.getItem('access_token');
+    }
+
+    const bankMappings = {
+        "hbl": "Habib Bank Limited",
+        "meezan": "Meezan Bank Limited",
+        "easypaisa": "EasyPaisa",
+        "jazzcash": "JazzCash",
+        "sadapay": "Sadapay"
+    }
+
+    const fetchBankdetails = async()=>{
+        try{
+            const token = getToken();
+            if (!token) {
+                setError('Authentication token not found.');
+                setLoading(false);
+                return;
+            }
+            const fetchAccountResponse = await fetch(`${BACKEND_URL}/fund_tracking/banks/1`, {
+                headers: {'Authorization': `Bearer ${token}`,}
+            });
+            const fetchAccount = await fetchAccountResponse.json(); 
+    
+            const bankName = bankMappings[fetchAccount.bank];
+    
+            setBankDetials({
+                accountNumber: fetchAccount.account_number || '',
+                bankName : bankName || '',
+                holderName : fetchAccount.account_title || ''
+            })
+        }catch (error) {
+            console.error('Error submitting donation:', error);
+        }
+    }
+    useEffect(()=>{
+        fetchBankdetails()
+    },[])
 
     const handleOpenModal = () => {
         setIsModalOpen(true);
+        setError(''); // Clear any previous errors
     };
 
     const handleCloseModal = () => {
@@ -28,6 +72,8 @@ const DonateOnlinePage = () => {
         setDonationReceipt(null);
         setDonationAmount('');
         setImagePreviewUrl(null);
+        setError('');
+        setLoading(false);
     };
 
     const handleReceiptUpload = (event) => {
@@ -45,12 +91,72 @@ const DonateOnlinePage = () => {
         setDonationAmount(event.target.value);
     };
 
-    const handleSubmitDonation = () => {
-        // In a real application, you would send the donationReceipt and donationAmount to your server
-        console.log('Donation Receipt:', donationReceipt);
-        console.log('Donation Amount:', donationAmount);
-        handleCloseModal();
-        // Optionally, you can show a success message to the user
+    const handleSubmitDonation = async() => {
+        if (!donationReceipt || !donationAmount) {
+            setError('Please provide both donation amount and receipt.');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
+        const token = getToken();
+        if (!token) {
+            setError('Authentication token not found.');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // First, create the transaction
+            const createTransaction = await fetch(`${BACKEND_URL}/fund_tracking/transactions/`, {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: donationAmount,
+                    mode: "online",
+                })
+            });
+
+            if (!createTransaction.ok) {
+                throw new Error('Failed to create transaction');
+            }
+
+            const createTransactionResponse = await createTransaction.json();
+            const transactionId = createTransactionResponse.id;
+
+            // Then, upload the file using FormData
+            const formData = new FormData();
+            formData.append('transaction_id', transactionId);
+            formData.append('image', donationReceipt); 
+
+            const fundTracking = await fetch(`${BACKEND_URL}/fund_tracking/screenshots/`, {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: formData 
+            });
+
+            if (!fundTracking.ok) {
+                throw new Error('Failed to upload receipt', fundTracking);
+            }
+
+            const fundTrackingResponse = await fundTracking.json();
+            console.log('Fund tracking response:', fundTrackingResponse);
+            
+            // Success - close modal and show success message
+            handleCloseModal();
+
+        } catch (error) {
+            console.error('Error submitting donation:', error);
+            setError('An error occurred while submitting the donation.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const copyToClipboard = async () => {
@@ -79,7 +185,7 @@ const DonateOnlinePage = () => {
                     <CardContent className="p-4">
                         <h2 className="text-xl font-semibold mb-2 text-white">Bank Account Information</h2>
                         <p className="text-white">
-                            <strong>Bank Name:</strong> {bankDetails.bankName}
+                            <strong>Bank:</strong> {bankDetails.bankName}
                         </p>
                         <div className="flex items-center space-x-2">
                             <p className="text-white">
@@ -112,6 +218,11 @@ const DonateOnlinePage = () => {
                                 </Button>
                             </div>
                             <div className="p-4">
+                                {error && (
+                                    <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                                        {error}
+                                    </div>
+                                )}
                                 <div className="grid gap-4">
                                     {/* Image Preview */}
                                     {imagePreviewUrl && (
@@ -137,8 +248,12 @@ const DonateOnlinePage = () => {
                                             onChange={handleAmountChange}
                                         />
                                     </div>
-                                    <Button onClick={handleSubmitDonation} className="bg-primary-500 text-white hover:bg-primary-600">
-                                        Submit Donation
+                                    <Button 
+                                        onClick={handleSubmitDonation} 
+                                        disabled={loading}
+                                        className="bg-primary-500 text-white hover:bg-primary-600 disabled:opacity-50"
+                                    >
+                                        {loading ? 'Submitting...' : 'Submit Donation'}
                                     </Button>
                                 </div>
                             </div>

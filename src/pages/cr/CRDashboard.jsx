@@ -5,12 +5,18 @@ import Notification from '@/components/home/Notification';
 import ActionCard from '@/components/home/ActionCard';
 import { Link } from 'react-router-dom';
 import { Coins, FileText, CheckCheck, Handshake, PlusCircle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext'; // Import useAuth
 
 const CRDashboardPage = () => {
-    const crData = {
-        name: 'Muhammad Ahsan Sajjad', 
-        role: 'Class Representative'
-    };
+    const { userInfo } = useAuth(); // Use the useAuth hook
+
+    // Extract user and userType details from userInfo
+    const user = userInfo?.user;
+    const student = userInfo?.student;
+    const studentClass = student ? `${student.student_class}-${student.class_section}` : 'N/A';
+
+    const name = user ? `${user.first_name} ${user.last_name}` : 'N/A';
+    const role = studentClass || 'N/A';
 
     return (
         <div className="bg-background-DEFAULT min-h-screen">
@@ -23,8 +29,8 @@ const CRDashboardPage = () => {
 
                 {/* CR Details Section */}
                 <div className="bg-primary-800 text-white p-4 rounded-md shadow-sm mb-4">
-                    <p className="font-semibold">{crData.name}</p>
-                    <p className="text-sm">{crData.role}</p>
+                    <p className="font-semibold">{name}</p>
+                    <p className="text-sm">{role}</p>
                 </div>
 
                 <Notification message="Welcome Class Representative!" type="info" />

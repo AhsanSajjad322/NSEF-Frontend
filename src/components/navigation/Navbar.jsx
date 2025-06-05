@@ -6,8 +6,7 @@ import { MobileSidebar } from './MobileSidebar';
 
 const Navbar = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const userRoles = ['Personal', 'CR / NSFRep', 'BP', 'NSFT'];
-    const currentRole = userRoles[0];
+    const currentRole = 'User';
 
     const handleOpenSidebar = () => {
         setIsSidebarOpen(true);
@@ -31,7 +30,7 @@ const Navbar = () => {
                     <AvatarFallback className="bg-accent-500 text-secondary-foreground">P</AvatarFallback>
                 </Avatar>
             </div>
-            <MobileSidebar isOpen={isSidebarOpen} onClose={handleCloseSidebar} userRoles={userRoles} />
+            <MobileSidebar isOpen={isSidebarOpen} onClose={handleCloseSidebar} />
         </div>
     );
 };

@@ -1,5 +1,5 @@
 // AddDonationPage.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/navigation/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,36 +16,70 @@ import {
 import { Search, X } from 'lucide-react';
 
 const itemsPerPage = 7;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const AddDonationPage = () => {
-    const [students, setStudents] = useState([
-        { id: 1, name: 'Ali Ahmed', cms: '368854', amountPaid: 25000, status: 'Paid' },
-        { id: 2, name: 'Sara Khan', cms: '368853', amountPaid: 0, status: 'Unpaid' },
-        { id: 3, name: 'Usman Ghani', cms: '368852', amountPaid: 30000, status: 'Paid' },
-        { id: 4, name: 'Ayesha Siddiqui', cms: '368157', amountPaid: 0, status: 'Unpaid' },
-        { id: 5, name: 'Bilal Raza', cms: '368857', amountPaid: 28000, status: 'Paid' },
-        { id: 6, name: 'Fatima Ali', cms: '368655', amountPaid: 25000, status: 'Paid' },
-        { id: 7, name: 'Hamza Khan', cms: '368856', amountPaid: 0, status: 'Unpaid' },
-        { id: 8, name: 'Nimra Butt', cms: '368859', amountPaid: 32000, status: 'Paid' },
-        { id: 9, name: 'Qasim Shah', cms: '362857', amountPaid: 0, status: 'Unpaid' },
-        { id: 10, name: 'Sana Javed', cms: '265857', amountPaid: 27000, status: 'Paid' },
-        { id: 11, name: 'Tahir Mehmood', cms: '168857', amountPaid: 0, status: 'Unpaid' },
-        { id: 12, name: 'Uzma Khan', cms: '468857', amountPaid: 31000, status: 'Paid' },
-        { id: 13, name: 'Waqas Ali', cms: '568857', amountPaid: 0, status: 'Unpaid' },
-        { id: 14, name: 'Zainab Fatima', cms: '248439', amountPaid: 29000, status: 'Paid' },
-        { id: 15, name: 'Yaseen Khan', cms: '238539', amountPaid: 0, status: 'Unpaid' },
-        { id: 16, name: 'Kiran Malik', cms: '238639', amountPaid: 26000, status: 'Paid' },
-        { id: 17, name: 'Ejaz Ahmed', cms: '238479', amountPaid: 0, status: 'Unpaid' },
-        { id: 18, name: 'Sofia Hassan', cms: '274859', amountPaid: 30500, status: 'Paid' },
-        { id: 19, name: 'Rehan Ali', cms: '928475', amountPaid: 0, status: 'Unpaid' },
-        { id: 20, name: 'Amna Raza', cms: '927583', amountPaid: 27500, status: 'Paid' },
-    ]);
+    const [students, setStudents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isDonateModalOpen, setIsDonateModalOpen] = useState(false);
     const [donatingStudent, setDonatingStudent] = useState(null);
     const [donationAmount, setDonationAmount] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [filterStatus, setFilterStatus] = useState('all');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [donatingLoading, setDonatingLoading] = useState(false);
+
+    const getToken = () => {
+        return localStorage.getItem('access_token');
+    };
+
+    const getStudents = async () => {
+        try {
+            setLoading(true);
+            setError('');
+            
+            const token = getToken();
+            if (!token) {
+                setError('Authentication token not found.');
+                setLoading(false);
+                return;
+            }
+
+            const fetchStudentsResponse = await fetch(`${BACKEND_URL}/fund_tracking/students/my`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!fetchStudentsResponse.ok) {
+                throw new Error(`Failed to fetch students: ${fetchStudentsResponse.status}`);
+            }
+
+            const fetchedStudents = await fetchStudentsResponse.json();
+            
+            // Map the backend data to your frontend format
+            const mappedStudents = fetchedStudents.map(student => ({
+                id: student.id,
+                name: `${student.user.first_name || ''} ${student.user.last_name || ''}`.trim(),
+                cms: student.cms ,
+            }));
+
+            setStudents(mappedStudents);
+            
+        } catch (error) {
+            console.error('Error fetching students:', error);
+            setError('Failed to load students. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        getStudents();
+    }, []);
 
     const handleSearchChange = (event) => {
         setSearchTerm(event.target.value);
@@ -68,14 +102,63 @@ const AddDonationPage = () => {
         setDonationAmount(event.target.value);
     };
 
-    const handleDonate = () => {
-        if (donatingStudent) {
+    const handleDonate = async () => {
+        if (!donatingStudent || !donationAmount) {
+            alert('Please enter a valid donation amount.');
+            return;
+        }
+
+        try {
+            setDonatingLoading(true);
+            const token = getToken();
+            
+            if (!token) {
+                alert('Authentication token not found.');
+                return;
+            }
+
+            // Create donation transaction
+            const donationResponse = await fetch(`${BACKEND_URL}/fund_tracking/transactions/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: parseFloat(donationAmount),
+                    sender_id: donatingStudent.id,
+                    mode: 'cash'
+                })
+            });
+
+            if (!donationResponse.ok) {
+                throw new Error('Failed to create donation transaction');
+            }
+
+            const transactionData = await donationResponse.json();
+            console.log('Donation successful:', transactionData);
+
+            // Update local state to reflect the donation
             const amountToAdd = parseFloat(donationAmount) || 0;
             const updatedStudents = students.map(student =>
-                student.id === donatingStudent.id ? { ...student, amountPaid: student.amountPaid + amountToAdd, status: student.amountPaid + amountToAdd > 0 ? 'Paid' : 'Unpaid' } : student
+                student.id === donatingStudent.id 
+                    ? { 
+                        ...student, 
+                        amountPaid: student.amountPaid + amountToAdd, 
+                        status: student.amountPaid + amountToAdd > 0 ? 'Paid' : 'Unpaid' 
+                    } 
+                    : student
             );
             setStudents(updatedStudents);
+            
+            alert('Donation added successfully!');
             closeDonateModal();
+
+        } catch (error) {
+            console.error('Error creating donation:', error);
+            alert('Failed to add donation. Please try again.');
+        } finally {
+            setDonatingLoading(false);
         }
     };
 
@@ -88,7 +171,7 @@ const AddDonationPage = () => {
         const searchLower = searchTerm.toLowerCase();
         return (
             student.name.toLowerCase().includes(searchLower) ||
-            student.cms.toLowerCase().includes(searchLower)
+            student.cms.toString().includes(searchLower)
         );
     }).filter(student => {
         if (filterStatus === 'all') return true;
@@ -108,6 +191,46 @@ const AddDonationPage = () => {
     const handlePrevPage = () => {
         setCurrentPage(prev => prev > 1 ? prev - 1 : prev);
     };
+
+    // Loading state
+    if (loading) {
+        return (
+            <div className="bg-background-DEFAULT min-h-screen">
+                <Navbar />
+                <div className="container mx-auto p-4">
+                    <div className="text-sm text-text-light mb-4">
+                        CR / <span className="font-semibold text-text-DEFAULT">Add Donation</span>
+                    </div>
+                    <div className="flex justify-center items-center py-8">
+                        <div className="text-lg">Loading students...</div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <div className="bg-background-DEFAULT min-h-screen">
+                <Navbar />
+                <div className="container mx-auto p-4">
+                    <div className="text-sm text-text-light mb-4">
+                        CR / <span className="font-semibold text-text-DEFAULT">Add Donation</span>
+                    </div>
+                    <div className="flex flex-col justify-center items-center py-8">
+                        <div className="text-red-600 mb-4">{error}</div>
+                        <Button 
+                            onClick={getStudents}
+                            className="bg-blue-500 text-white hover:bg-blue-600"
+                        >
+                            Try Again
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-background-DEFAULT min-h-screen">
@@ -129,7 +252,9 @@ const AddDonationPage = () => {
                         />
                         <Search className="absolute top-2.5 right-3 h-4 w-4 text-text-light" />
                     </div>
-                    <div className="flex items-center space-x-2">
+
+                    {/* Filter by status as paid or unpaid, if used in future */}
+                    {/* <div className="flex items-center space-x-2">
                         <Label className="text-text-DEFAULT">Filter By:</Label>
                         <Button
                             variant={filterStatus === 'all' ? 'default' : 'outline'}
@@ -149,19 +274,30 @@ const AddDonationPage = () => {
                         >
                             Unpaid
                         </Button>
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* Student List */}
                 <Card className="shadow-sm border border-muted-DEFAULT">
                     <CardContent className="p-4">
-                        <h2 className="text-lg font-semibold mb-4 text-text-DEFAULT">Student Details</h2>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-semibold text-text-DEFAULT">
+                                Student Details ({students.length} students)
+                            </h2>
+                            <Button 
+                                onClick={getStudents}
+                                variant="outline"
+                                className="text-sm"
+                            >
+                                Refresh
+                            </Button>
+                        </div>
+                        
                         <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Name</TableHead>
                                     <TableHead>CMS</TableHead>
-                                    <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -170,9 +306,13 @@ const AddDonationPage = () => {
                                     <TableRow key={student.id}>
                                         <TableCell>{student.name}</TableCell>
                                         <TableCell>{student.cms}</TableCell>
-                                        <TableCell>{student.status}</TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="outline" size="icon" onClick={() => openDonateModal(student)}>
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => openDonateModal(student)}
+                                                className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                                            >
                                                 Donate
                                             </Button>
                                         </TableCell>
@@ -180,12 +320,16 @@ const AddDonationPage = () => {
                                 ))}
                                 {currentStudents.length === 0 && filteredStudents.length > 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="text-center py-4">No students found on this page.</TableCell>
+                                        <TableCell colSpan={3} className="text-center py-4">
+                                            No students found on this page.
+                                        </TableCell>
                                     </TableRow>
                                 )}
                                 {filteredStudents.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="text-center py-4">No students match your search criteria.</TableCell>
+                                        <TableCell colSpan={3} className="text-center py-4">
+                                            {searchTerm ? 'No students match your search criteria.' : 'No students found.'}
+                                        </TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -196,7 +340,9 @@ const AddDonationPage = () => {
                                 <Button onClick={handlePrevPage} disabled={currentPage === 1}>
                                     Previous
                                 </Button>
-                                <span>{currentPage} of {totalPages}</span>
+                                <span className="text-sm text-gray-600">
+                                    Page {currentPage} of {totalPages} ({filteredStudents.length} students)
+                                </span>
                                 <Button onClick={handleNextPage} disabled={currentPage === totalPages}>
                                     Next
                                 </Button>
@@ -211,7 +357,13 @@ const AddDonationPage = () => {
                         <div className="bg-white rounded-md shadow-lg w-full max-w-md">
                             <div className="p-4 border-b border-muted-DEFAULT flex items-center justify-between">
                                 <h2 className="text-lg font-semibold text-text-DEFAULT">Donate Amount</h2>
-                                <Button variant="ghost" size="icon" onClick={closeDonateModal} className="text-text-light hover:bg-muted-DEFAULT">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={closeDonateModal} 
+                                    className="text-text-light hover:bg-muted-DEFAULT"
+                                    disabled={donatingLoading}
+                                >
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -224,13 +376,19 @@ const AddDonationPage = () => {
                                         <Input
                                             id="donation-amount"
                                             type="number"
-                                            placeholder="Enter amount"
+                                            placeholder="Enter amount in PKR"
                                             value={donationAmount}
                                             onChange={handleDonationAmountChange}
+                                            disabled={donatingLoading}
+                                            min="1"
                                         />
                                     </div>
-                                    <Button onClick={handleDonate} className="bg-primary-500 text-white hover:bg-primary-600">
-                                        Donate
+                                    <Button 
+                                        onClick={handleDonate} 
+                                        disabled={donatingLoading || !donationAmount}
+                                        className="bg-primary-500 text-white hover:bg-primary-600 disabled:opacity-50"
+                                    >
+                                        {donatingLoading ? 'Processing...' : 'Donate'}
                                     </Button>
                                 </div>
                             </div>
