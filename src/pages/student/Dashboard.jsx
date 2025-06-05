@@ -4,13 +4,17 @@ import Notification from '@/components/home/Notification';
 import ActionCard from '@/components/home/ActionCard';
 import { Link } from 'react-router-dom';
 import { Coins, AlertTriangle, Handshake, FileText } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const HomePage = () => {
-    const userData = {
-        name: 'Ahsan Sajjad',
-        cms: '368857',
-        class: "BESE 12-A"
-    };
+    const { userInfo } = useAuth();
+
+    const user = userInfo?.user;
+    const student = userInfo?.student;
+
+    const name = user ? `${user.first_name} ${user.last_name}` : 'N/A';
+    const cms = student?.cms || 'N/A';
+    const studentClass = student ? `${student.student_class}-${student.class_section}` : 'N/A';
 
     const recentActivity = [
         { name: 'Aslam Ali', details: 'PKR 2,500 ↓' },
@@ -29,9 +33,9 @@ const HomePage = () => {
 
                 {/* User Details Section */}
                 <div className="bg-primary-800 text-white p-4 rounded-md shadow-sm mb-4">
-                    <p className="font-semibold">{userData.name}</p>
-                    <p className="text-sm">{userData.cms}</p>
-                    <p className="text-sm">{userData.class}</p>
+                    <p className="font-semibold">{name}</p>
+                    <p className="text-sm">{cms}</p>
+                    <p className="text-sm">{studentClass}</p>
                 </div>
 
 

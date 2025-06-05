@@ -1,5 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
 import DashboardPage from './pages/student/Dashboard';
 import DonateOnlinePage from './pages/student/DonateOnline';
 import TransactionsPage from './pages/student/Transactions';
@@ -24,44 +27,117 @@ import { Toaster } from './components/ui/toaster';
 function App() {
   return (
     <Router>
-      <Routes>
+      <AuthProvider>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
 
-        {/* Student/Personal Routes */}
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/student/dashboard" element={<DashboardPage />} />
-        <Route path="/student" element={<DashboardPage />} />        <Route path="/student/donate-online" element={<DonateOnlinePage />} />
-        <Route path="/student/view-transactions" element={<TransactionsPage />} />
-        <Route path="/student/request-fund" element={<RequestFundPage />} />
-        <Route path="/student/request-history" element={<RequestHistoryPage />} />
-        <Route path="/student/fund-request/:requestId" element={<FundRequestDetailPage />} />
-        <Route path="/student/complaint" element={<ComplaintPage />} />
+          {/* Student Routes */}
+          <Route path="/student/dashboard" element={
+            <ProtectedRoute allowedUserType="Student">
+              <DashboardPage />
+            </ProtectedRoute>
+          } />          <Route path="/student/donate-online" element={
+            <ProtectedRoute allowedUserType="Student">
+              <DonateOnlinePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/view-transactions" element={
+            <ProtectedRoute allowedUserType="Student">
+              <TransactionsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/request-fund" element={
+            <ProtectedRoute allowedUserType="Student">
+              <RequestFundPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/request-history" element={
+            <ProtectedRoute allowedUserType="Student">
+            <RequestHistoryPage />
+            </ProtectedRoute>
+          } />
+        <Route path="/student/fund-request/:requestId" element={
+                 <ProtectedRoute allowedUserType="Student">
+          <FundRequestDetailPage />
+          </ProtectedRoute>
+          } />
 
-        {/* CR/GR/NsfRep Routes */}
-        <Route path="/cr" element={<CRDashboardPage />} />
-        <Route path="/cr/dashboard" element={<CRDashboardPage />} />
-        <Route path="cr/add-donation" element={<AddDonationPage />} />
-        <Route path="/cr/transactions" element={<CRTransactionsPage />} />
-        <Route path="/cr/verify-online-transaction" element={<VerifyOnlineTransactionPage />} />
-        <Route path="/cr/cash-handovers" element={<CRCashHandoversPage />} />
+        <Route path="/student/complaint" element={
+            <ProtectedRoute allowedUserType="Student">
+              <ComplaintPage />
+            </ProtectedRoute>
+          } />
 
-        
-        {/* BP Routes */}
-        <Route path="/bp" element={<BPDashboardPage />} />
-        <Route path="/bp/dashboard" element={<BPDashboardPage />} />
-        <Route path="/bp/cash-handovers" element={<BPCashHandoversPage />} />
-        <Route path="/bp/cash-receival-confirmation" element={<BPCashReceivalConfirmationPage />} />
+          {/* CR Routes */}
+          <Route path="/cr/dashboard" element={
+            <ProtectedRoute allowedUserType="CR">
+              <CRDashboardPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/cr/add-donation" element={
+            <ProtectedRoute allowedUserType="CR">
+              <AddDonationPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/cr/transactions" element={
+            <ProtectedRoute allowedUserType="CR">
+              <CRTransactionsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/cr/verify-online-transaction" element={
+            <ProtectedRoute allowedUserType="CR">
+              <VerifyOnlineTransactionPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/cr/cash-handovers" element={
+            <ProtectedRoute allowedUserType="CR">
+              <CRCashHandoversPage />
+            </ProtectedRoute>
+          } />
 
+          {/* BP Routes */}
+          <Route path="/bp/dashboard" element={
+            <ProtectedRoute allowedUserType="BP">
+              <BPDashboardPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/bp/cash-handovers" element={
+            <ProtectedRoute allowedUserType="BP">
+              <BPCashHandoversPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/bp/cash-receival-confirmation" element={
+            <ProtectedRoute allowedUserType="BP">
+              <BPCashReceivalConfirmationPage />
+            </ProtectedRoute>
+          } />
 
-        {/* NSFT Routes */}        <Route path="/nsft" element={<NSFTDashboardPage />} />
-        <Route path="/nsft/dashboard" element={<NSFTDashboardPage />} />
-        <Route path="/nsft/cash-receival-confirmation" element={<NSFTCashReceivalConfirmationPage />} />
-        <Route path="/nsft/fund-requests" element={<FundRequestsPage />} />
+          {/* NSFT Routes */}
+          <Route path="/nsft/dashboard" element={
+            <ProtectedRoute allowedUserType="NSFT">
+              <NSFTDashboardPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/nsft/cash-receival-confirmation" element={
+            <ProtectedRoute allowedUserType="NSFT">
+              <NSFTCashReceivalConfirmationPage />
+            </ProtectedRoute>
+          } />
 
-        {/* Accountant Routes */}
+          <Route path="/nsft/fund-requests" element={
+            <ProtectedRoute allowedUserType="NSFT">
+            <FundRequestsPage />
+            </ProtectedRoute>
+          } />
+
+                  {/* Accountant Routes */}
         <Route path="/accountant" element={<AccountantDashboard />} />
 
-
-      </Routes>
+          {/* Redirect root to login */}
+          <Route path="/" element={<Login />} />
+        </Routes>
+      </AuthProvider>
       <Toaster />
     </Router>
   );

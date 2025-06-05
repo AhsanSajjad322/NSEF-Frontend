@@ -14,6 +14,7 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useAuth } from '@/context/AuthContext';
 
 // Define your menu structure
 const menuItems = {
@@ -46,7 +47,35 @@ const menuItems = {
         { label: 'Dashboard', path: '/accountant' },
     ],
 };
-export const MobileSidebar = ({ isOpen, onClose, userRoles }) => {
+
+const allowedMenuRoles = (userType) => {
+    if (!userType) return [];
+
+    const lowerCaseUserType = userType.map((user)=>{
+        return user.toLowerCase()
+    });
+
+    const finalRoles = []
+
+    if (lowerCaseUserType.includes('student')){
+        finalRoles.push('Personal');
+    }
+    if (lowerCaseUserType.includes('cr')){
+        finalRoles.push('CR / NSFRep');
+    }
+    if (lowerCaseUserType.includes('bp')){
+        finalRoles.push('BP');
+    }
+    if (lowerCaseUserType.includes('nsft')){
+        finalRoles.push('NSFT');
+    }
+    return finalRoles;
+};
+
+export const MobileSidebar = ({ isOpen, onClose }) => {
+    const { userType, logout } = useAuth();
+    const accessibleRoles = allowedMenuRoles(userType);
+
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
             <SheetContent side='left' className="sm:max-w-xs flex flex-col h-full bg-white">
@@ -55,7 +84,7 @@ export const MobileSidebar = ({ isOpen, onClose, userRoles }) => {
                 </SheetHeader>
                 <div className="flex-grow overflow-y-auto p-4">
                     <Accordion type="single" collapsible>
-                        {userRoles.map((role) => (
+                        {accessibleRoles.map((role) => (
                             <AccordionItem key={role} value={role}>
                                 <AccordionTrigger className="text-lg font-semibold text-primary-DEFAULT hover:bg-primary-100 rounded-md p-2 -mx-2">
                                     {role}
@@ -73,7 +102,7 @@ export const MobileSidebar = ({ isOpen, onClose, userRoles }) => {
                     </Accordion>
                 </div>
                 <Separator className="my-4 border-muted-DEFAULT" />
-                <Button variant="outline" className="w-full bg-secondary-600 text-white hover:bg-secondary-50">
+                <Button variant="outline" className="w-full bg-secondary-600 text-white hover:bg-secondary-50" onClick={logout}>
                     Sign Out
                 </Button>
             </SheetContent>

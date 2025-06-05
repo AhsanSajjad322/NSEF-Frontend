@@ -3,13 +3,18 @@ import Navbar from '@/components/navigation/Navbar';
 import Notification from '@/components/home/Notification';
 import ActionCard from '@/components/home/ActionCard';
 import { Link } from 'react-router-dom';
-import { CheckCheck, FileText } from 'lucide-react'; // Icons for different actions
+import { CheckCheck, FileText } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext'; // Import useAuth
 
 const NSFTDashboardPage = () => {
-    const nsftData = {
-        name: 'Muhammad Ahsan Sajjad', // Replace with actual data
-        role: 'NSFT Representative' // Role identifier
-    };
+    const { userInfo } = useAuth(); // Use the useAuth hook
+
+    // Extract user and userType details from userInfo
+    const user = userInfo?.user;
+    const userType = userInfo?.userType;
+
+    const name = user ? `${user.first_name} ${user.last_name}` : 'N/A';
+    const role = userType || 'N/A';
 
     return (
         <div className="bg-background-DEFAULT min-h-screen">
@@ -22,8 +27,8 @@ const NSFTDashboardPage = () => {
 
                 {/* NSFT Details Section */}
                 <div className="bg-primary-800 text-white p-4 rounded-md shadow-sm mb-4">
-                    <p className="font-semibold">{nsftData.name}</p>
-                    <p className="text-sm">{nsftData.role}</p>
+                    <p className="font-semibold">{name}</p>
+                    <p className="text-sm">{role}</p>
                 </div>
 
                 <Notification message="Welcome NSFT Representative!" type="info" />
