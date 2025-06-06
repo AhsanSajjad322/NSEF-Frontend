@@ -14,22 +14,13 @@ import {
 } from "@/components/ui/table";
 import { Edit, Trash2, Search } from 'lucide-react';
 import { X } from 'lucide-react';
+import { getToken } from '@/utils/auth';
 
 const itemsPerPage = 7;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const CRTransactionsPage = () => {
-    const [transactions, setTransactions] = useState([
-        { id: 1, name: 'Ali Ahmed', cms: '368854', amount: 25000, date: '2025-03-01', status: 'processed' },
-        { id: 2, name: 'Sara Khan', cms: '368853', amount: 10000, date: '2025-03-05', status: 'unprocessed' },
-        { id: 3, name: 'Usman Ghani', cms: '368852', amount: 15000, date: '2025-03-10', status: 'processing' },
-        { id: 4, name: 'Ayesha Siddiqui', cms: '368157', amount: 5000, date: '2025-03-12', status: 'unprocessed' },
-        { id: 5, name: 'Bilal Raza', cms: '368857', amount: 20000, date: '2025-03-15', status: 'processed' },
-        { id: 6, name: 'Fatima Ali', cms: '368655', amount: 7500, date: '2025-03-16', status: 'processing' },
-        { id: 7, name: 'Hamza Khan', cms: '368856', amount: 12000, date: '2025-03-02', status: 'unprocessed' },
-        { id: 8, name: 'Nimra Butt', cms: '368859', amount: 18000, date: '2025-03-07', status: 'processed' },
-        { id: 9, name: 'Qasim Shah', cms: '362857', amount: 9000, date: '2025-03-11', status: 'unprocessed' },
-        { id: 10, name: 'Sana Javed', cms: '265857', amount: 22000, date: '2025-03-14', status: 'processing' },
-    ]);
+    const [transactions, setTransactions] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -38,16 +29,66 @@ const CRTransactionsPage = () => {
     const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
     const [transactionToDelete, setTransactionToDelete] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        fetchTransactions();
+    }, []);
+
+    const fetchTransactions = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const token = getToken();
+            if (!token) {
+                setError('Authentication token not found.');
+                return;
+            }
+
+            const response = await fetch(`${BACKEND_URL}/fund_tracking/transactions/`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error fetching transactions: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            // Filter only cash transactions
+            const cashTransactions = data.filter(transaction => transaction.mode === 'cash');
+            setTransactions(cashTransactions);
+        } catch (err) {
+            setError(err.message);
+            console.error('Failed to fetch transactions:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSearchChange = (event) => {
         setSearchTerm(event.target.value);
         setCurrentPage(1);
     };
 
-
     const handleStatusFilterChange = (event) => {
         setStatusFilter(event.target.value);
         setCurrentPage(1);
+    };
+
+    const getStatusDisplay = (state) => {
+        switch (state) {
+            case 'initiated':
+                return 'Initiated';
+            case 'processing':
+                return 'Processing';
+            case 'completed':
+                return 'Completed';
+            default:
+                return state;
+        }
     };
 
     const openEditModal = (transaction) => {
@@ -66,13 +107,39 @@ const CRTransactionsPage = () => {
         setEditedAmount(event.target.value);
     };
 
-    const saveEditedAmount = () => {
-        if (editingTransaction) {
-            const updatedTransactions = transactions.map(transaction =>
-                transaction.id === editingTransaction.id ? { ...transaction, amount: parseFloat(editedAmount) } : transaction
-            );
-            setTransactions(updatedTransactions);
+    const saveEditedAmount = async () => {
+        if (!editingTransaction) return;
+
+        try {
+            setLoading(true);
+            setError(null);
+            const token = getToken();
+            if (!token) {
+                setError('Authentication token not found.');
+                return;
+            }
+
+            const response = await fetch(`${BACKEND_URL}/fund_tracking/transactions/${editingTransaction.id}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ amount: parseFloat(editedAmount) }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update transaction');
+            }
+
+            // Refresh transactions after successful update
+            await fetchTransactions();
             closeEditModal();
+        } catch (err) {
+            setError(err.message);
+            console.error('Failed to update transaction:', err);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -86,23 +153,50 @@ const CRTransactionsPage = () => {
         setTransactionToDelete(null);
     };
 
-    const handleDeleteTransaction = () => {
-        if (transactionToDelete) {
-            const updatedTransactions = transactions.filter(transaction => transaction.id !== transactionToDelete.id);
-            setTransactions(updatedTransactions);
+    const handleDeleteTransaction = async () => {
+        if (!transactionToDelete) return;
+
+        try {
+            setLoading(true);
+            setError(null);
+            const token = getToken();
+            if (!token) {
+                setError('Authentication token not found.');
+                return;
+            }
+
+            const response = await fetch(`${BACKEND_URL}/fund_tracking/transactions/${transactionToDelete.id}/`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete transaction');
+            }
+
+            // Refresh transactions after successful deletion
+            await fetchTransactions();
             closeDeleteConfirmation();
+        } catch (err) {
+            setError(err.message);
+            console.error('Failed to delete transaction:', err);
+        } finally {
+            setLoading(false);
         }
     };
 
     const filteredTransactions = transactions.filter(transaction => {
         const searchLower = searchTerm.toLowerCase();
+        const studentName = `${transaction.sender.user.first_name} ${transaction.sender.user.last_name}`.toLowerCase();
         return (
-            transaction.name.toLowerCase().includes(searchLower) ||
-            transaction.cms.toLowerCase().includes(searchLower)
+            studentName.includes(searchLower) ||
+            transaction.sender.cms.toString().toLowerCase().includes(searchLower)
         );
     }).filter(transaction => {
         if (statusFilter === 'all') return true;
-        return transaction.status === statusFilter;
+        return transaction.state === statusFilter;
     });
 
     const indexOfLastTransaction = currentPage * itemsPerPage;
@@ -148,9 +242,9 @@ const CRTransactionsPage = () => {
                             onChange={handleStatusFilterChange}
                         >
                             <option value="all">All</option>
-                            <option value="processed">Processed</option>
-                            <option value="unprocessed">Unprocessed</option>
+                            <option value="initiated">Initiated</option>
                             <option value="processing">Processing</option>
+                            <option value="completed">Completed</option>
                         </select>
                     </div>
                 </div>
@@ -159,60 +253,66 @@ const CRTransactionsPage = () => {
                 <Card className="shadow-sm border border-muted-DEFAULT">
                     <CardContent className="p-4">
                         <h2 className="text-lg font-semibold mb-4 text-text-DEFAULT">Cash Transactions</h2>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>CMS</TableHead>
-                                    <TableHead>Amount</TableHead>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {currentTransactions.map((transaction) => (
-                                    <TableRow key={transaction.id}>
-                                        <TableCell>{transaction.name}</TableCell>
-                                        <TableCell>{transaction.cms}</TableCell>
-                                        <TableCell>{transaction.amount}</TableCell>
-                                        <TableCell>{transaction.date}</TableCell>
-                                        <TableCell>{transaction.status}</TableCell>
-                                        <TableCell className="text-right">
-                                            {transaction.status === 'unprocessed' && (
-                                                <div className='flex'>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        onClick={() => openEditModal(transaction)}
-                                                        className="mr-2"
-                                                    >
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="destructive"
-                                                        size="icon"
-                                                        onClick={() => openDeleteConfirmation(transaction)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {currentTransactions.length === 0 && filteredTransactions.length > 0 && (
+                        {loading ? (
+                            <div className="text-center py-4">Loading...</div>
+                        ) : error ? (
+                            <div className="text-center py-4 text-red-500">{error}</div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-4">No transactions found on this page.</TableCell>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>CMS</TableHead>
+                                        <TableHead>Amount</TableHead>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                )}
-                                {filteredTransactions.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-4">No transactions match your search criteria.</TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {currentTransactions.map((transaction) => (
+                                        <TableRow key={transaction.id}>
+                                            <TableCell>{`${transaction.sender.user.first_name} ${transaction.sender.user.last_name}`}</TableCell>
+                                            <TableCell>{transaction.sender.cms}</TableCell>
+                                            <TableCell>{transaction.amount}</TableCell>
+                                            <TableCell>{new Date(transaction.created).toLocaleDateString()}</TableCell>
+                                            <TableCell>{getStatusDisplay(transaction.state)}</TableCell>
+                                            <TableCell className="text-right">
+                                                {transaction.state === 'initiated' && (
+                                                    <div className='flex justify-end'>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                            onClick={() => openEditModal(transaction)}
+                                                            className="mr-2"
+                                                        >
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            onClick={() => openDeleteConfirmation(transaction)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {currentTransactions.length === 0 && filteredTransactions.length > 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-4">No transactions found on this page.</TableCell>
+                                        </TableRow>
+                                    )}
+                                    {filteredTransactions.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-4">No transactions match your search criteria.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        )}
 
                         {filteredTransactions.length > itemsPerPage && (
                             <div className="flex justify-between items-center mt-4">
@@ -242,7 +342,7 @@ const CRTransactionsPage = () => {
                                 <div className="grid gap-4">
                                     <div className="grid gap-2">
                                         <Label htmlFor="edit-amount" className="text-text-DEFAULT">
-                                            Amount for {editingTransaction.name} (CMS: {editingTransaction.cms})
+                                            Amount for {`${editingTransaction.sender.user.first_name} ${editingTransaction.sender.user.last_name}`} (CMS: {editingTransaction.sender.cms})
                                         </Label>
                                         <Input
                                             id="edit-amount"
@@ -274,7 +374,7 @@ const CRTransactionsPage = () => {
                             <div className="p-4">
                                 <p className="text-text-DEFAULT">
                                     Are you sure you want to delete the transaction for{' '}
-                                    <span className="font-semibold">{transactionToDelete.name}</span> (CMS: {transactionToDelete.cms})?
+                                    <span className="font-semibold">{`${transactionToDelete.sender.user.first_name} ${transactionToDelete.sender.user.last_name}`}</span> (CMS: {transactionToDelete.sender.cms})?
                                 </p>
                                 <div className="flex justify-end mt-4 space-x-2">
                                     <Button variant="secondary" onClick={closeDeleteConfirmation}>

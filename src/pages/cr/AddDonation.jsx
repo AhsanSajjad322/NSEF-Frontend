@@ -127,7 +127,8 @@ const AddDonationPage = () => {
                 body: JSON.stringify({
                     amount: parseFloat(donationAmount),
                     sender_id: donatingStudent.id,
-                    mode: 'cash'
+                    mode: 'cash',
+                    verification_state: 'verified'
                 })
             });
 
@@ -150,8 +151,6 @@ const AddDonationPage = () => {
                     : student
             );
             setStudents(updatedStudents);
-            
-            alert('Donation added successfully!');
             closeDonateModal();
 
         } catch (error) {

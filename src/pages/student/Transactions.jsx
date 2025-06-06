@@ -74,7 +74,7 @@ const TransactionsPage = () => {
 
                 const online = data.filter(transaction => transaction.mode === 'online');
                 const cash = data.filter(transaction => transaction.mode === 'cash');
-
+              
                 // Sort transactions by created date descending
                 const sortByDate = (a, b) => new Date(b.created).getTime() - new Date(a.created).getTime();
 
@@ -371,6 +371,7 @@ const TransactionsPage = () => {
                                                     <TableHead className="w-[100px]">Month</TableHead>
                                                     <TableHead>Amount</TableHead>
                                                     <TableHead>Handed To</TableHead>
+                                                    <TableHead>State</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -379,6 +380,7 @@ const TransactionsPage = () => {
                                                         <TableCell>{formatMonth(transaction.created)}</TableCell>
                                                         <TableCell>{transaction.amount}</TableCell>
                                                         <TableCell>{transaction.receiver?.user ? `${transaction.receiver.user.first_name} ${transaction.receiver.user.last_name}` : 'N/A'}</TableCell>
+                                                        <TableCell>{transaction.state}</TableCell>
                                                     </TableRow>
                                                 ))}
                                             </TableBody>

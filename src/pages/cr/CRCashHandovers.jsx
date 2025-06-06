@@ -15,46 +15,119 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from 'date-fns';
 import { X } from 'lucide-react';
+import { getToken } from '@/utils/auth';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const itemsPerPage = 5; // Adjust as needed
+const itemsPerPage = 5;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const CRCashHandoversPage = () => {
-  const [unprocessedTransactions, setUnprocessedTransactions] = useState([
-    { id: 2, name: 'Sara Khan', cms: '368853', amount: 10000, date: '2025-03-05', status: 'unprocessed' },
-    { id: 4, name: 'Ayesha Siddiqui', cms: '368157', amount: 5000, date: '2025-03-12', status: 'unprocessed' },
-    { id: 7, name: 'Hamza Khan', cms: '368856', amount: 12000, date: '2025-03-02', status: 'unprocessed' },
-    { id: 9, name: 'Qasim Shah', cms: '362857', amount: 9000, date: '2025-03-11', status: 'unprocessed' },
-    { id: 11, name: 'Tahir Mehmood', cms: '168857', amount: 6000, date: '2025-04-01', status: 'unprocessed' },
-    { id: 13, name: 'Waqas Ali', cms: '568857', amount: 11000, date: '2025-04-05', status: 'unprocessed' },
-    { id: 14, name: 'Zainab Fatima', cms: '248439', amount: 9500, date: '2025-04-10', status: 'unprocessed' },
-    { id: 15, name: 'Yaseen Khan', cms: '238539', amount: 7000, date: '2025-04-15', status: 'unprocessed' },
-  ]);
+  const [transactions, setTransactions] = useState([]);
   const [selectedTransactionIds, setSelectedTransactionIds] = useState(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [totalSelectedAmount, setTotalSelectedAmount] = useState(0);
   const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
-  const [handoverRecipients] = useState(['Recipient A', 'Recipient B', 'Recipient C', 'Recipient D', 'Recipient E', 'Recipient F']);
-  const [selectedRecipient, setSelectedRecipient] = useState('');
+  const [handoverRecipients, setHandoverRecipients] = useState([]);
+  const [selectedRecipientId, setSelectedRecipientId] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [recipientsLoading, setRecipientsLoading] = useState(true);
+  const [recipientsError, setRecipientsError] = useState(null);
+
+  useEffect(() => {
+    fetchTransactions();
+    fetchRecipients();
+  }, []);
+
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = getToken();
+      if (!token) {
+        setError('Authentication token not found.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/fund_tracking/transactions/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error fetching transactions: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      // Filter only cash transactions with initiated state
+      const initiatedCashTransactions = data.filter(transaction =>
+        transaction.mode === 'cash' && transaction.state === 'initiated'
+      );
+      setTransactions(initiatedCashTransactions);
+    } catch (err) {
+      setError(err.message);
+      console.error('Failed to fetch transactions:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRecipients = async () => {
+    try {
+      setRecipientsLoading(true);
+      setRecipientsError(null);
+      const token = getToken();
+      if (!token) {
+        setRecipientsError('Authentication token not found.');
+        setRecipientsLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/base/representatives/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error fetching representatives: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      // Filter for users with group 'BP'
+      const bpUsers = data.filter(representative =>
+        representative.user.groups.includes('BP')
+      );
+      setHandoverRecipients(bpUsers);
+    } catch (err) {
+      setRecipientsError(err.message);
+      console.error('Failed to fetch recipients:', err);
+    } finally {
+      setRecipientsLoading(false);
+    }
+  };
 
   useEffect(() => {
     let total = 0;
-    unprocessedTransactions.forEach(transaction => {
+    transactions.forEach(transaction => {
       if (selectedTransactionIds.has(transaction.id)) {
         total += transaction.amount;
       }
     });
     setTotalSelectedAmount(total);
-  }, [selectedTransactionIds, unprocessedTransactions]);
+  }, [selectedTransactionIds, transactions]);
 
   useEffect(() => {
     if (selectAll) {
-      const allIds = new Set(unprocessedTransactions.map(transaction => transaction.id));
+      const allIds = new Set(transactions.map(transaction => transaction.id));
       setSelectedTransactionIds(allIds);
     } else {
       setSelectedTransactionIds(new Set());
     }
-  }, [selectAll, unprocessedTransactions]);
+  }, [selectAll, transactions]);
 
   const handleTransactionSelect = (id) => {
     const newSelectedIds = new Set(selectedTransactionIds);
@@ -64,7 +137,7 @@ const CRCashHandoversPage = () => {
       newSelectedIds.add(id);
     }
     setSelectedTransactionIds(newSelectedIds);
-    setSelectAll(newSelectedIds.size === unprocessedTransactions.length && unprocessedTransactions.length > 0);
+    setSelectAll(newSelectedIds.size === transactions.length && transactions.length > 0);
   };
 
   const handleSelectAll = (checked) => {
@@ -81,37 +154,68 @@ const CRCashHandoversPage = () => {
 
   const closeHandoverModal = () => {
     setIsHandoverModalOpen(false);
-    setSelectedRecipient('');
+    setSelectedRecipientId('');
   };
 
-  const handleRecipientChange = (event) => {
-    setSelectedRecipient(event.target.value);
+  const handleRecipientChange = (value) => {
+    setSelectedRecipientId(value);
   };
 
-  const handleHandover = () => {
-    if (selectedRecipient) {
-      const updatedTransactions = unprocessedTransactions.map(transaction => {
-        if (selectedTransactionIds.has(transaction.id)) {
-          return { ...transaction, status: 'processing' };
-        }
-        return transaction;
+  const handleHandover = async () => {
+    if (!selectedRecipientId) {
+      alert('Please select a recipient to handover the cash to.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const token = getToken();
+      if (!token) {
+        setError('Authentication token not found.');
+        setLoading(false);
+        return;
+      }
+
+      const selectedIds = Array.from(selectedTransactionIds);
+      const response = await fetch(`${BACKEND_URL}/fund_tracking/transactions/forward/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          transactions_ids: selectedIds,
+          forwardee_id: parseInt(selectedRecipientId),
+          forwarded_amount: totalSelectedAmount,
+        }),
       });
-      setUnprocessedTransactions(updatedTransactions);
+
+      if (!response.ok) {
+        const responseerror = await response.json();
+        console.log(responseerror)
+        console.log("Response error is above")
+        throw new Error(`Failed to handover transactions: ${response.statusText}`);
+      }
+
+      await fetchTransactions();
       setSelectedTransactionIds(new Set());
       setSelectAll(false);
       setTotalSelectedAmount(0);
       closeHandoverModal();
-      // In a real application, you would likely make an API call here
-    } else {
-      alert('Please select a recipient to handover the cash to.');
+    } catch (err) {
+      setError(err.message);
+      console.error('Failed to handover transactions:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   const indexOfLastTransaction = currentPage * itemsPerPage;
   const indexOfFirstTransaction = indexOfLastTransaction - itemsPerPage;
-  const currentTransactions = unprocessedTransactions.slice(indexOfFirstTransaction, indexOfLastTransaction);
+  const currentTransactions = transactions.slice(indexOfFirstTransaction, indexOfLastTransaction);
 
-  const totalPages = Math.ceil(unprocessedTransactions.length / itemsPerPage);
+  const totalPages = Math.ceil(transactions.length / itemsPerPage);
 
   const handleNextPage = () => {
     setCurrentPage(prev => prev < totalPages ? prev + 1 : prev);
@@ -138,47 +242,53 @@ const CRCashHandoversPage = () => {
         {/* Transactions List */}
         <Card className="shadow-sm border border-muted-DEFAULT">
           <CardContent className="p-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
-                  </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>CMS</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Month</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentTransactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell className="w-10">
-                      <Checkbox
-                        checked={selectedTransactionIds.has(transaction.id)}
-                        onCheckedChange={() => handleTransactionSelect(transaction.id)}
-                      />
-                    </TableCell>
-                    <TableCell>{transaction.name}</TableCell>
-                    <TableCell>{transaction.cms}</TableCell>
-                    <TableCell>{transaction.amount}</TableCell>
-                    <TableCell>{format(new Date(transaction.date), 'MMMM')}</TableCell>
-                  </TableRow>
-                ))}
-                {currentTransactions.length === 0 && unprocessedTransactions.length > 0 && (
+            {loading ? (
+              <div className="text-center py-4">Loading transactions...</div>
+            ) : error ? (
+              <div className="text-center py-4 text-red-500">{error}</div>
+            ) : (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-4">No transactions found on this page.</TableCell>
+                    <TableHead className="w-10">
+                      <Checkbox checked={selectAll} onCheckedChange={handleSelectAll} />
+                    </TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>CMS</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Date</TableHead>
                   </TableRow>
-                )}
-                {unprocessedTransactions.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-4">No unprocessed transactions found.</TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {currentTransactions.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell className="w-10">
+                        <Checkbox
+                          checked={selectedTransactionIds.has(transaction.id)}
+                          onCheckedChange={() => handleTransactionSelect(transaction.id)}
+                        />
+                      </TableCell>
+                      <TableCell>{`${transaction.sender.user.first_name} ${transaction.sender.user.last_name}`}</TableCell>
+                      <TableCell>{transaction.sender.cms}</TableCell>
+                      <TableCell>{transaction.amount}</TableCell>
+                      <TableCell>{format(new Date(transaction.created), 'MMMM dd, yyyy')}</TableCell>
+                    </TableRow>
+                  ))}
+                  {currentTransactions.length === 0 && transactions.length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4">No transactions found on this page.</TableCell>
+                    </TableRow>
+                  )}
+                  {transactions.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4">No unprocessed transactions found.</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
 
-            {unprocessedTransactions.length > itemsPerPage && (
+            {transactions.length > itemsPerPage && (
               <div className="flex justify-between items-center mt-4">
                 <Button onClick={handlePrevPage} disabled={currentPage === 1}>
                   Previous
@@ -190,9 +300,15 @@ const CRCashHandoversPage = () => {
               </div>
             )}
 
-            {unprocessedTransactions.length > 0 && (
+            {transactions.length > 0 && (
               <div className="mt-4 flex justify-end">
-                <Button className='bg-primary-800 flex justify-start' onClick={openHandoverModal}>Handover</Button>
+                <Button
+                  className='bg-primary-800 flex justify-start'
+                  onClick={openHandoverModal}
+                  disabled={selectedTransactionIds.size === 0}
+                >
+                  Handover
+                </Button>
               </div>
             )}
           </CardContent>
@@ -201,36 +317,54 @@ const CRCashHandoversPage = () => {
         {/* Handover Modal */}
         {isHandoverModalOpen && (
           <div className="fixed px-3 inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-md shadow-lg w-full max-w-md">
+            <div className="bg-white rounded-md shadow-lg w-full max-w-sm">
               <div className="p-4 border-b border-muted-DEFAULT flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-text-DEFAULT">Confirm Handover</h2>
+                <h2 className="text-lg font-semibold text-text-DEFAULT">Select Recipient</h2>
                 <Button variant="ghost" size="icon" onClick={closeHandoverModal} className="text-text-light hover:bg-muted-DEFAULT">
                   <X className="h-4 w-4" />
                 </Button>
               </div>
               <div className="p-4">
-                <p className="text-text-DEFAULT mb-4">
-                  Total Amount to Handover: <span className="font-semibold">{totalSelectedAmount}</span>
-                </p>
                 <div className="grid gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="handover-to" className="text-text-DEFAULT">Handover To</Label>
-                    <select
-                      id="handover-to"
-                      className="rounded-md border border-muted-DEFAULT shadow-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-text-DEFAULT dark:bg-background-DEFAULT dark:border-muted-DEFAULT dark:text-text-DEFAULT handover-recipient-dropdown"
-                      value={selectedRecipient}
-                      onChange={handleRecipientChange}
-                      style={{ width: '200px', maxWidth: '100%' }}
-                    >
-                      <option value="">Select Recipient</option>
-                      {handoverRecipients.map((recipient) => (
-                        <option key={recipient} value={recipient}>{recipient}</option>
-                      ))}
-                    </select>
+                    <Label htmlFor="recipient" className="text-text-DEFAULT">Recipient (BP)</Label>
+                    {recipientsLoading ? (
+                      <p className="text-text-DEFAULT">Loading recipients...</p>
+                    ) : recipientsError ? (
+                      <p className="text-red-500">{recipientsError}</p>
+                    ) : (
+                       <Select onValueChange={handleRecipientChange} value={selectedRecipientId} disabled={handoverRecipients.length === 0}>
+                          <SelectTrigger className="w-full">
+                             <SelectValue placeholder="Select a recipient" />
+                          </SelectTrigger>
+                          <SelectContent>
+                             {handoverRecipients.map(recipient => (
+                                <SelectItem key={recipient.id} value={recipient.id.toString()}>
+                                   {`${recipient.user.first_name} ${recipient.user.last_name}`}
+                                </SelectItem>
+                             ))}
+                          </SelectContent>
+                       </Select>
+                    )}
+                     {recipientsLoading || recipientsError || handoverRecipients.length === 0 && !recipientsError && (
+                         <p className="text-sm text-text-light">No BP recipients found.</p>
+                     )}
                   </div>
-                  <Button onClick={handleHandover} className="bg-primary-500 text-white hover:bg-primary-600">
-                    Handover
-                  </Button>
+                  <div className="text-sm text-text-DEFAULT">
+                    Total Amount to Handover: <span className="font-semibold">{totalSelectedAmount}</span>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="secondary" onClick={closeHandoverModal}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleHandover}
+                      className="bg-primary-500 text-white hover:bg-primary-600"
+                      disabled={!selectedRecipientId || loading}
+                    >
+                      Confirm Handover
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -15,31 +15,59 @@ import {
 import { Search, Check, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { getToken } from '@/utils/auth';
 
 const itemsPerPage = 8;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const VerifyOnlineTransactionPage = () => {
-  const [onlineTransactions, setOnlineTransactions] = useState([
-    { id: 1, name: 'Ali Ahmed', cms: '3148194', amount: 25000, date: new Date('2025-03-10'), status: 'Verified', receiptUrl: '/receipt1.pdf' },
-    { id: 2, name: 'Sara Khan', cms: '3743194', amount: 15000, date: new Date('2025-03-12'), status: 'Pending', receiptUrl: '/receipt2.pdf' },
-    { id: 3, name: 'Usman Ghani', cms: '3743194', amount: 30000, date: new Date('2025-03-05'), status: 'Verified', receiptUrl: '/receipt3.pdf' },
-    { id: 4, name: 'Ayesha Siddiqui', cms: '3748144', amount: 10000, date: new Date('2025-03-15'), status: 'Pending', receiptUrl: '/receipt4.pdf' },
-    { id: 5, name: 'Bilal Raza', cms: '1748194', amount: 28000, date: new Date('2025-03-08'), status: 'Verified', receiptUrl: '/receipt5.pdf' },
-    { id: 6, name: 'Fatima Ali', cms: '2748194', amount: 22000, date: new Date('2025-03-11'), status: 'Pending', receiptUrl: '/receipt6.pdf' },
-    { id: 7, name: 'Hamza Khan', cms: '3748194', amount: 18000, date: new Date('2025-03-14'), status: 'Verified', receiptUrl: '/receipt7.pdf' },
-    { id: 8, name: 'Nimra Butt', cms: '4748194', amount: 32000, date: new Date('2025-03-07'), status: 'Pending', receiptUrl: '/receipt8.pdf' },
-    { id: 9, name: 'Qasim Shah', cms: '5748194', amount: 26000, date: new Date('2025-03-13'), status: 'Verified', receiptUrl: '/receipt9.pdf' },
-    { id: 10, name: 'Sana Javed', cms: '6748194', amount: 29000, date: new Date('2025-03-09'), status: 'Pending', receiptUrl: '/receipt10.pdf' },
-  ]);
+  const [onlineTransactions, setOnlineTransactions] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('date');
   const [filterStatus, setFilterStatus] = useState('all');
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingTransaction, setViewingTransaction] = useState(null);
   const [editedAmount, setEditedAmount] = useState('');
-  const [isWrongAccount, setIsWrongAccount] = useState(false);
-  const [wrongAccountDetails, setWrongAccountDetails] = useState('');
+  const [rejectionDetails, setRejectionDetails] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = getToken();
+      if (!token) {
+        setError('Authentication token not found.');
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/fund_tracking/transactions/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error fetching transactions: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      // Filter only online transactions
+      const online = data.filter(transaction => transaction.mode === 'online');
+      setOnlineTransactions(online);
+    } catch (err) {
+      setError(err.message);
+      console.error('Failed to fetch transactions:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
@@ -59,61 +87,134 @@ const VerifyOnlineTransactionPage = () => {
   const openViewModal = (transaction) => {
     setViewingTransaction(transaction);
     setEditedAmount(transaction.amount.toString());
+    setRejectionDetails('');
     setIsViewModalOpen(true);
-    setIsWrongAccount(false);
-    setWrongAccountDetails('');
   };
 
   const closeViewModal = () => {
     setIsViewModalOpen(false);
     setViewingTransaction(null);
     setEditedAmount('');
-    setIsWrongAccount(false);
-    setWrongAccountDetails('');
+    setRejectionDetails('');
   };
 
   const handleEditAmountChange = (event) => {
     setEditedAmount(event.target.value);
   };
 
-  const handleWrongAccountChange = (event) => {
-    setIsWrongAccount(event.target.checked);
+  const handleRejectionDetailsChange = (event) => {
+    setRejectionDetails(event.target.value);
   };
 
-  const handleWrongAccountDetailsChange = (event) => {
-    setWrongAccountDetails(event.target.value);
-  };
+  const handleVerifyTransaction = async () => {
+    if (!viewingTransaction) return;
 
-  const handleVerifyTransaction = () => {
-    if (viewingTransaction && !isWrongAccount && viewingTransaction.status === 'Pending') {
-      const updatedTransactions = onlineTransactions.map(transaction =>
-        transaction.id === viewingTransaction.id ? { ...transaction, status: 'Verified', amount: parseFloat(editedAmount) } : transaction
-      );
-      setOnlineTransactions(updatedTransactions);
+    try {
+      setLoading(true);
+      setError(null);
+      const token = getToken();
+      if (!token) {
+        setError('Authentication token not found.');
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/fund_tracking/transactions/${viewingTransaction.id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          amount: parseFloat(editedAmount),
+          verification_state: 'verified'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to verify transaction');
+      }
+
+      await fetchTransactions();
       closeViewModal();
+    } catch (err) {
+      setError(err.message);
+      console.error('Failed to verify transaction:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDiscardTransaction = () => {
-    // Implement logic to handle discarded/rejected transaction
-    if (viewingTransaction && viewingTransaction.status === 'Pending' && isWrongAccount) {
-      console.log('Transaction Discarded:', viewingTransaction, wrongAccountDetails);
-      closeViewModal();
+  const handleRejectTransaction = async () => {
+    if (!viewingTransaction || !rejectionDetails) {
+      alert('Please provide rejection details');
+      return;
     }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const token = getToken();
+      if (!token) {
+        setError('Authentication token not found.');
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/fund_tracking/transactions/${viewingTransaction.id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          verification_state: 'rejected',
+          rejection_details: rejectionDetails
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reject transaction');
+      }
+
+      await fetchTransactions();
+      closeViewModal();
+    } catch (err) {
+      setError(err.message);
+      console.error('Failed to reject transaction:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'verified':
+        return 'text-green-500';
+      case 'rejected':
+        return 'text-red-500';
+      case 'pending':
+        return 'text-yellow-500';
+      default:
+        return 'text-gray-500';
+    }
+  };
+
+  const getStatusDisplay = (status) => {
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   const filteredAndSortedTransactions = onlineTransactions.filter(transaction => {
     const searchLower = searchTerm.toLowerCase();
+    const studentName = `${transaction.sender.user.first_name} ${transaction.sender.user.last_name}`.toLowerCase();
     return (
-      transaction.name.toLowerCase().includes(searchLower) ||
-      transaction.cms.toLowerCase().includes(searchLower)
+      studentName.includes(searchLower) ||
+      transaction.sender.cms.toString().toLowerCase().includes(searchLower)
     );
   }).filter(transaction => {
     if (filterStatus === 'all') return true;
-    return transaction.status.toLowerCase() === filterStatus;
+    return transaction.verification_state === filterStatus;
   }).sort((a, b) => {
     if (sortBy === 'date') {
-      return new Date(b.date) - new Date(a.date);
+      return new Date(b.created).getTime() - new Date(a.created).getTime();
     }
     return 0;
   });
@@ -160,30 +261,22 @@ const VerifyOnlineTransactionPage = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="date">Date</SelectItem>
-                {/* Add other sorting options if needed */}
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center space-x-2">
-            <Label className="text-text-DEFAULT">Filter By:</Label>
-            <Button
-              variant={filterStatus === 'all' ? 'default' : 'outline'}
-              onClick={() => handleFilterChange('all')}
-            >
-              All
-            </Button>
-            <Button
-              variant={filterStatus === 'verified' ? 'default' : 'outline'}
-              onClick={() => handleFilterChange('verified')}
-            >
-              Verified
-            </Button>
-            <Button
-              variant={filterStatus === 'pending' ? 'default' : 'outline'}
-              onClick={() => handleFilterChange('pending')}
-            >
-              Pending
-            </Button>
+          <div>
+            <Label htmlFor="filter-status" className="text-text-DEFAULT block mb-1">Filter Status:</Label>
+            <Select value={filterStatus} onValueChange={handleFilterChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="verified">Verified</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -191,13 +284,18 @@ const VerifyOnlineTransactionPage = () => {
         <Card className="shadow-sm border border-muted-DEFAULT">
           <CardContent className="p-4">
             <h2 className="text-lg font-semibold mb-4 text-text-DEFAULT">Online Transactions</h2>
+            {loading ? (
+              <div className="text-center py-4">Loading...</div>
+            ) : error ? (
+              <div className="text-center py-4 text-red-500">{error}</div>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>CMS</TableHead>
                   <TableHead>Amount</TableHead>
-                  <TableHead>Month</TableHead>
+                    <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -205,11 +303,13 @@ const VerifyOnlineTransactionPage = () => {
               <TableBody>
                 {currentTransactions.map((transaction) => (
                   <TableRow key={transaction.id}>
-                    <TableCell>{transaction.name}</TableCell>
-                    <TableCell>{transaction.cms}</TableCell>
+                      <TableCell>{`${transaction.sender.user.first_name} ${transaction.sender.user.last_name}`}</TableCell>
+                      <TableCell>{transaction.sender.cms}</TableCell>
                     <TableCell>{transaction.amount}</TableCell>
-                    <TableCell>{new Date(transaction.date).toLocaleDateString('en-US', { month: 'short' })}</TableCell>
-                    <TableCell className={transaction.status === 'Verified' ? 'text-green-500' : 'text-yellow-500'}>{transaction.status}</TableCell>
+                      <TableCell>{new Date(transaction.created).toLocaleDateString()}</TableCell>
+                      <TableCell className={getStatusColor(transaction.verification_state)}>
+                        {getStatusDisplay(transaction.verification_state)}
+                      </TableCell>
                     <TableCell className="text-right">
                       <Button variant="outline" size="icon" onClick={() => openViewModal(transaction)}>
                         View
@@ -219,16 +319,17 @@ const VerifyOnlineTransactionPage = () => {
                 ))}
                 {currentTransactions.length === 0 && filteredAndSortedTransactions.length > 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-4">No transactions found on this page.</TableCell>
+                      <TableCell colSpan={6} className="text-center py-4">No transactions found on this page.</TableCell>
                   </TableRow>
                 )}
                 {filteredAndSortedTransactions.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-4">No transactions match your search criteria.</TableCell>
+                      <TableCell colSpan={6} className="text-center py-4">No transactions match your search criteria.</TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
+            )}
 
             {filteredAndSortedTransactions.length > itemsPerPage && (
               <div className="flex justify-between items-center mt-4">
@@ -257,12 +358,10 @@ const VerifyOnlineTransactionPage = () => {
               <div className="p-4 grid gap-4">
                 <div>
                   <Label htmlFor="receipt" className="text-text-DEFAULT block mb-1">Receipt</Label>
-                  {/* Placeholder for Receipt Display - Replace with actual receipt display */}
                   <div className="border border-muted-DEFAULT rounded-md p-2 text-sm text-text-light">
                     <p>Receipt Preview (Replace with actual image/content)</p>
                     <p>Transaction ID: {viewingTransaction.id}</p>
-                    <p>Date: {viewingTransaction.date.toLocaleDateString()}</p>
-                    {/* You would typically display an image or embed a PDF here */}
+                    <p>Date: {new Date(viewingTransaction.created).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="grid gap-2">
@@ -272,49 +371,39 @@ const VerifyOnlineTransactionPage = () => {
                     type="number"
                     value={editedAmount}
                     onChange={handleEditAmountChange}
-                    readOnly={viewingTransaction.status === 'Verified'}
+                    readOnly={viewingTransaction.verification_state !== 'pending'}
                   />
                 </div>
-                {viewingTransaction.status === 'Pending' && (
+                {viewingTransaction.verification_state === 'pending' && (
                   <>
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        id="wrong-account"
-                        type="checkbox"
-                        checked={isWrongAccount}
-                        onChange={handleWrongAccountChange}
+                    <div className="grid gap-2">
+                      <Label htmlFor="rejection-details" className="text-text-DEFAULT">Rejection Details</Label>
+                      <Textarea
+                        id="rejection-details"
+                        placeholder="Enter rejection details"
+                        value={rejectionDetails}
+                        onChange={handleRejectionDetailsChange}
+                        rows={3}
                       />
-                      <Label htmlFor="wrong-account" className="text-text-DEFAULT cursor-pointer">Wrong Account Transaction</Label>
                     </div>
-                    {isWrongAccount && (
-                      <div className="grid gap-2">
-                        <Label htmlFor="wrong-account-details" className="text-text-DEFAULT">Details</Label>
-                        <Textarea
-                          id="wrong-account-details"
-                          placeholder="Enter details of the wrong transaction"
-                          value={wrongAccountDetails}
-                          onChange={handleWrongAccountDetailsChange}
-                          rows={3}
-                          required={isWrongAccount}
-                        />
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="destructive" onClick={handleRejectTransaction}>
+                        Reject
+                      </Button>
+                      <Button onClick={handleVerifyTransaction} className="bg-primary-500 text-white hover:bg-primary-600">
+                        Verify
+                      </Button>
                       </div>
-                    )}
                   </>
                 )}
-                <div className="flex justify-end space-x-2">
-                  <Button onClick={closeViewModal}>Close</Button>
-                  {viewingTransaction.status === 'Pending' && (
-                    <>
-                      {isWrongAccount ? (
-                        <Button variant="destructive" onClick={handleDiscardTransaction}>Discard</Button>
-                      ) : (
-                        <Button onClick={handleVerifyTransaction} className="bg-primary-500 text-white hover:bg-primary-600">
-                          Verify
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
+                {viewingTransaction.verification_state === 'rejected' && (
+                  <div className="grid gap-2">
+                    <Label className="text-text-DEFAULT">Rejection Details</Label>
+                    <div className="p-2 bg-red-50 text-red-700 rounded-md">
+                      {viewingTransaction.rejection_details}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

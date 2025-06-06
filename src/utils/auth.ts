@@ -43,8 +43,6 @@ export const removeTokens = () => {
 
 export const decodeToken = (token: string): TokenPayload => {
   try {
-    console.log("Token decoded as:")
-    console.log(jwtDecode<TokenPayload>(token));
     return jwtDecode<TokenPayload>(token);
   } catch (error) {
     console.error('Error decoding token:', error);
