@@ -23,7 +23,7 @@ const menuItems = {
         { label: 'Donate Online', path: '/student/donate-online' },
         // { label: 'Request Fund', path: '/student/request-fund' },
         { label: 'View Transaction', path: '/student/view-transactions' },
-        // { label: 'Complaint/Feedback', path: '/student/complaint' },
+        { label: 'Complaint/Feedback', path: '/student/complaint' },
         { label : 'Fund Request History', path: '/student/request-history' }
     ],
     'CR / NSFRep': [
